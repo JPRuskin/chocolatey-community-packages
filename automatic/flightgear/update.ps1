@@ -1,10 +1,7 @@
 ﻿Import-Module Chocolatey-AU
 
-# We can't use https for the url, otherwise powershell throws an error and closes the window.
-# Oddly it works when choco auto redirects http to https
-$downloads = 'https://sourceforge.net/projects/flightgear/files'
-$changelog = 'http://wiki.flightgear.org/Changelog_'
-$versions = 'http://www.flightgear.org/'
+$changelog = 'https://www.flightgear.org/download/releases/'
+$latestVersions = 'https://www.flightgear.org/download/'
 
 function global:au_SearchReplace {
   @{
@@ -19,23 +16,19 @@ function global:au_SearchReplace {
 }
 
 function global:au_GetLatest {
-  $version_page = Invoke-WebRequest -UseBasicParsing -Uri $versions
-  $re = "(?i)Current stable release: (?<stable>[0-9\.]+)"
-  if($version_page.Content -match $re)
-  {
-    $version = $Matches.stable
-    $short_version =  $version.Substring(0, $version.LastIndexOf("."))
-  } else
-  {
-    throw "Cannot obtain the latest version from FlightGear's homepage, please update the `"update.ps1`" script."
+  $version_page = Invoke-WebRequest -UseBasicParsing -Uri $latestVersions
+  $re = "Flightgear-(?<Version>.+).exe$"
+  if ($urls = @($version_page.Links.href -match $re)) {
+    if ($urls[0] -match $re) {
+      $version = $Matches.Version
+      $short_version = $version.Substring(0, $version.LastIndexOf("."))
+    }
   }
 
-  $url = "$downloads/release-$short_version/FlightGear-$version.exe/download"
-
-  $releaseNotes = "$changelog$short_version"
+  $releaseNotes = "$changelog$($short_version -replace '\.','-')"
 
   @{
-    URL32 = $url
+    URL32 = $urls[0]
     Version = $version
     RemoteVersion = $version
     ReleaseNotes = $releaseNotes
